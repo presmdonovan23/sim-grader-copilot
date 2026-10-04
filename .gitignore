@@ -1,0 +1,19 @@
+# SGC output (contains filenames and redacted student text)
+sgc_report_*
+sgc_run_*
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# macOS
+.DS_Store
