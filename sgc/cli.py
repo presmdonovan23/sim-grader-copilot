@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import platform
 import sys
+import traceback
 from datetime import datetime
 from importlib import metadata
 from pathlib import Path
@@ -28,6 +29,7 @@ from .pipeline import (
     prepare_all,
 )
 from .redact import Redactor, parse_names
+from .report import ReportInfo, build_report
 from .rubric import load_rubric
 from .runlog import RunFolder, get_logger
 
@@ -136,6 +138,7 @@ def _run_grade(
     started = datetime.now()
     run = RunFolder(submissions_dir, started)
     run.create()
+    report_error: Optional[str] = None
     try:
         get_logger().info("SGC %s dry_run=%s submissions=%d", __version__, dry_run, len(candidates))
         items: List[Prepared] = prepare_all(candidates, redactor, run)
@@ -145,6 +148,21 @@ def _run_grade(
                 log_dry_run_request(first, DryRunClient(model=model_id), run)
         else:
             grade_all(items, rubric, OpenAIClient(model=model_id, spend=spend), run, samples, spend)
+            try:
+                build_report(
+                    run.report_path,
+                    items,
+                    ReportInfo(
+                        started=started,
+                        model=model_id,
+                        rubric=rubric,
+                        rubric_path=str(rubric_path),
+                        usage=spend.summary(),
+                    ),
+                )
+            except Exception as exc:
+                get_logger().error("Could not write the report:\n%s", traceback.format_exc())
+                report_error = f"{type(exc).__name__}: {exc}"
         not_graded = [i for i in items if i.status == STATUS_NOT_GRADED]
         run.write_manifest(
             {
@@ -180,6 +198,7 @@ def _run_grade(
                     for i in items
                 ],
                 "counts": {"submissions": len(items), "not_graded": len(not_graded)},
+                "report": None if dry_run or report_error else run.report_path.name,
                 "usage": spend.summary(),
             }
         )
@@ -211,5 +230,10 @@ def _run_grade(
             f"{usage['output_tokens']:,}; estimated cost {cost_text}."
         )
         typer.echo(f"Results and model call logs: {run.run_dir}")
-        typer.echo("The PDF report is not implemented yet; see result.json in each submission folder.")
+        if report_error:
+            raise FatalError(
+                f"the report could not be written ({report_error}). Per-submission results are in "
+                f"{run.run_dir}; see run.log."
+            )
+        typer.echo(f"Report: {run.report_path}")
     return EXIT_SOME_NOT_GRADED if not_graded else EXIT_OK

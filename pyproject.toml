@@ -29,7 +29,7 @@ sgc = "sgc.cli:app"
 include = ["sgc*"]
 
 [tool.setuptools.package-data]
-sgc = ["data/*.txt"]
+sgc = ["data/*.txt", "data/fonts/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

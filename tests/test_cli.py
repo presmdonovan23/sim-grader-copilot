@@ -180,6 +180,34 @@ def test_graded_run_with_a_fake_model(tmp_path, monkeypatch):
     manifest = json.loads((run / "manifest.json").read_text())
     assert manifest["usage"]["model"] == "gpt-6.1-sol"
     assert manifest["counts"] == {"submissions": 3, "not_graded": 1}
+    (report,) = subs.glob("sgc_report_*.pdf")
+    assert manifest["report"] == report.name
+    assert f"Report: {report}" in result.output
+    import pdfplumber
+    with pdfplumber.open(report) as pdf:
+        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+    assert "alice.pdf" in text and "10/16" in text and "Susan" not in text
+
+
+def test_report_failure_exits_2_but_keeps_run_results(tmp_path, monkeypatch):
+    from fakes import ScriptedLLM, grading, screening
+    from sgc.rubric import load_rubric
+
+    rubric = load_rubric(RUBRIC)
+    quote = "it is important to stay calm and to communicate with the team"
+    llm = ScriptedLLM({"screening": [screening()] * 2, "grading": [grading(rubric, [4, 3, 2, 1], quote)] * 2})
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("sgc.cli.OpenAIClient", lambda **kwargs: llm)
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("disk on fire")
+
+    monkeypatch.setattr("sgc.cli.build_report", boom)
+    subs = make_submissions(tmp_path)
+    result = run_cli(subs, names_file(tmp_path), "--samples", "1")
+    assert result.exit_code == 2 and "report could not be written" in result.output
+    assert json.loads((run_folder(subs) / "S001" / "result.json").read_text())["status"] == "graded"
+    assert json.loads((run_folder(subs) / "manifest.json").read_text())["report"] is None
 
 
 def test_model_failure_marks_only_that_submission_not_graded(tmp_path, monkeypatch):
