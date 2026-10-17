@@ -37,6 +37,16 @@ Expected volume is roughly 10-20 assignments per week. Speed is not a priority; 
 
 SGC logs every request it makes to the language model, exactly as sent, along with the response. Look in the `sgc_run_<timestamp>/` folder next to the report: each submission has an `llm_calls.md` (readable) and `llm_calls.jsonl` (exact). Only redacted text appears in these logs, never filenames or the API key. To inspect the redacted text and the first prompt before anything is sent, run with `--dry-run`.
 
+## Building the names file
+
+`scripts/extract_names.py` finds likely student names in a folder of submissions without using any language model (labels such as "Name:", document properties, headers, the first lines, and file names). Names that appear in many submissions, such as the simulated patient or the instructor, are listed separately and left out.
+
+```
+.venv/bin/python scripts/extract_names.py ./submissions
+```
+
+It writes `names_candidates.txt`. Review it, add anyone it missed (files with no confident name are listed), and copy the names into `names.txt`. Lines starting with `#?` are low-confidence guesses. Both files hold real names; keep them out of git.
+
 ## Setup: OpenAI API key and billing
 
 SGC uses the OpenAI API. A ChatGPT subscription does **not** include API access, so you need a separate API account with billing. These steps are done once (the OpenAI dashboard layout changes from time to time, so menu names may differ slightly):
@@ -90,5 +100,6 @@ tests/                  Unit tests (no network needed)
 plans/                  Specs and planning documents
 rubric/                 Grading rubric (simulation_reflection_rubric.md)
 names.txt               Names to remove from submissions (one per line)
+scripts/extract_names.py  Local helper that proposes names for names.txt
 example_assignments/    Real student work (git-ignored, never commit)
 ```
