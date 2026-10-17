@@ -275,8 +275,8 @@ Run on the redacted `full_text` and the hidden text:
 
 | Check | Output |
 | --- | --- |
-| Hidden text | If `hidden_text` is non-empty, raise a **prompt injection** flag with the hidden text quoted (truncated for display), described neutrally as "text hidden from view in the document". Hidden text is **not** included in what the model grades. It is shown to the screening model (as separate, labeled data) so it can say whether it looks like instructions to a grader. |
-| Injection patterns | Case-insensitive regex list for common phrasing: "ignore (all\|any\|the)? (previous\|prior\|above) (instructions\|rules)", "system prompt", "you are (now )?an? (AI\|assistant\|grader)", "(give\|assign\|award) (me\|this)? .{0,30}(full\|maximum\|perfect\|highest\|16)", "disregard the rubric", "as the grader". Matches become prompt-injection flags with the matched text quoted. The list is kept in one file and is easy to extend. |
+| Hidden text | If `hidden_text` contains deliberately hidden text (white, tiny, `vanish`, or off-page), raise a **prompt injection** flag with the hidden text quoted (truncated for display), described neutrally as "text hidden from view in the document". Comments and deleted tracked changes are ordinary editing leftovers, so they raise no flag by themselves, but they are still shown to the screening model. Hidden text is **not** included in what the model grades. It is shown to the screening model (as separate, labeled data) so it can say whether it looks like instructions to a grader. |
+| Injection patterns | Case-insensitive regex list for common phrasing: "ignore (all\|any\|the)? (previous\|prior\|above) (instructions\|rules)", "system prompt", "you are (now )?an? (AI\|assistant\|grader)", "(give\|assign\|award) (me\|this)? .{0,30}(full\|maximum\|perfect\|highest\|16)", "disregard the rubric", "as the grader". Matches become prompt-injection flags with the whole containing sentence quoted. The list is kept in one file and is easy to extend. |
 | Profanity | Word-list match with common obfuscation handling (`f*ck`, `sh1t`, spaced letters), using an open-source list stored in the repo and reviewed by the instructor. Any hit becomes a profanity flag (any swear word, per decision). |
 
 ### 9.2 LLM screening call
@@ -369,7 +369,7 @@ Quotes must be found in the redacted text (normalized whitespace and quote chara
 
 Each submission is graded `--samples` times (default 3, must be odd). For each category:
 
-- the final score is the **median** of the valid samples,
+- the final score is the **median** of the valid samples (the lower of the two middle values if an even number of samples is valid, which happens when a sample fails validation),
 - if the samples do not all agree, or if the median sample marked itself borderline, the category is marked **Borderline**, with the alternative level taken from the nearest differing sample (or the model's own `alternative_points`),
 - rationale and quotes come from a sample that matches the median score.
 
@@ -420,7 +420,7 @@ These are rough, order-of-magnitude estimates. The live evaluation records actua
 
 1. **Account-level:** set a monthly budget and usage limit of **$25 per month** (decided) on the dedicated OpenAI project. This is the hard backstop and is configured by the user in the OpenAI dashboard (setup steps in the README).
 2. **In SGC:** every call's token usage is recorded in `manifest.json` and summarized in the console. A price table in `config.py` converts tokens to an estimated cost.
-3. **`--max-spend USD`:** before each model call, SGC checks the running estimated cost. If the ceiling would be exceeded, it stops making calls, marks the remaining submissions Not graded ("spend limit reached"), and still writes the report for those completed.
+3. **`--max-spend USD`:** before each model call, SGC checks the running estimated cost plus the estimated input cost of the call about to be made. If the ceiling would be exceeded, it stops making calls, marks the remaining submissions Not graded ("spend limit reached"), and still writes the report for those completed. Output tokens are only known after a call, so the ceiling can be exceeded by at most one call's output.
 4. **Bounded calls:** `max_output_tokens` is set on every call, and retries are capped (section 13).
 5. **Tuning knobs:** `--samples` (default 3, minimum 1) and reasoning effort can be lowered to cut cost, at some cost in consistency.
 6. **Dry run:** `--dry-run` shows submission and word counts and an estimated token total before any spend.
@@ -492,9 +492,9 @@ SGC writes its output **into the submissions directory** the user supplied. SGC 
 So the operator can see exactly what is submitted to the model, SGC logs **every** model request and its response. This is always on.
 
 - **Exact payload.** The logged request is the same object that is passed to the OpenAI SDK, serialized just before the call. It is not reconstructed afterward. Nothing is sent that is not logged. A unit test with a fake client asserts that the logged request equals the request received by the client (14.1).
-- **Logged before sending.** The request is written before the call is made, so a call that fails, times out, or is retried is still visible. Each retry is logged as its own entry.
+- **Logged before sending.** The request is written before the call is made, so a call that fails, times out, or is retried is still visible. Each retry is logged as its own entry. The log is append-only and two-phase: a `request` event is written first, then a `response` (or `error`) event with the same `call_id`. The SDK's own silent retries are turned off (`max_retries=0`) so every network attempt is logged.
 - **Fields per entry** (`llm_calls.jsonl`, one JSON object per line):
-  - `call_id`, `submission_id` (`S001`), `stage` (`screening`, `grading_sample_1`, ..., `weakest_area`), `attempt`, `timestamp`
+  - `call_id`, `submission_id` (`S001`), `stage` (`screening`, `grading`, `weakest_area`), `attempt` (validation attempt), `network_attempt`, `timestamp`
   - `sent` (false only for `--dry-run` entries)
   - `request`: model, instructions (system prompt), input (the redacted submission text and rubric), `store` (always `false`), `max_output_tokens`, reasoning effort, and the JSON schema for structured output
   - `response`: raw output text, parsed result or validation error, response ID, status

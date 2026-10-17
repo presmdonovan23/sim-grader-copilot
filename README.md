@@ -60,7 +60,7 @@ Expected cost is roughly $3 per week at 20 submissions with the default model (a
 
 ## Status
 
-In development. Working now: rubric parsing, file discovery, PDF and DOCX extraction with a quality gate, word count, name redaction, and `--dry-run`. Not yet built: the model calls, scoring, and the PDF report. Without `--dry-run`, `sgc grade` currently exits with an error.
+In development. Working now: rubric parsing, file discovery, PDF and DOCX extraction with a quality gate, word count, name redaction, `--dry-run`, the OpenAI client with full request logging, screening (code checks plus a model pass), grading (3 samples, median, Borderline), the perfect-score suggestion, and spend tracking. Tested with a scripted fake model only; no live API call has been made yet. Not yet built: the PDF report. A real run currently writes `result.json` per submission in the run folder instead.
 
 To try the working part (Python 3.9 or newer):
 
