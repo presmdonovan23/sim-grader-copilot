@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sgc"
+version = "0.1.0"
+description = "Sim Grader Copilot: grade recommendation reports for nursing simulation reflections"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "typer>=0.12",
+    "pdfplumber>=0.11",
+    "pypdf>=4",
+    "python-docx>=1.1",
+    "lxml>=5",
+    "pydantic>=2",
+    "reportlab>=4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pyyaml"]
+
+[project.scripts]
+sgc = "sgc.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["sgc*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["live: calls the real model API (slow, needs OPENAI_API_KEY)"]
