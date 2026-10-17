@@ -318,3 +318,46 @@ def finalize(redacted: str, verifier: Verifier) -> RedactedText:
     if verifier.survivors(redacted):
         raise RedactionVerificationError("a listed name remained after redaction")
     return RedactedText(redacted, _TOKEN)
+
+
+# --- derived text -------------------------------------------------------------------------
+# Pieces of already-verified text, or verified text with fixed markers swapped in, cannot contain
+# a listed name, so these helpers can produce RedactedText without re-running verification.
+
+
+def truncate(text: RedactedText, limit: int) -> RedactedText:
+    """Cut at a whitespace boundary so that no word is split into a new fragment."""
+    if len(text) <= limit:
+        return text
+    cut = str(text)[:limit]
+    boundary = max(cut.rfind(" "), cut.rfind("\n"), cut.rfind("\t"))
+    return RedactedText(cut[:boundary] if boundary > 0 else "", _TOKEN)
+
+
+def replace_spans(text: RedactedText, spans: Iterable[Tuple[int, int]], marker: str) -> RedactedText:
+    """Replace each (start, end) span of `text` with the fixed `marker` text.
+
+    Spans are widened to whole words first, so a partial word is never left behind.
+    """
+    plain = str(text)
+    widened: List[Tuple[int, int]] = []
+    for start, end in spans:
+        while start > 0 and not plain[start - 1].isspace():
+            start -= 1
+        while end < len(plain) and not plain[end].isspace():
+            end += 1
+        widened.append((start, end))
+    merged: List[List[int]] = []
+    for start, end in sorted(widened):
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    pieces: List[str] = []
+    last = 0
+    for start, end in merged:
+        pieces.append(plain[last:start])
+        pieces.append(marker)
+        last = end
+    pieces.append(plain[last:])
+    return RedactedText("".join(pieces), _TOKEN)

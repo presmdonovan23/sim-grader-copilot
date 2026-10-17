@@ -35,6 +35,25 @@ NAME_PLACEHOLDER = "[NAME]"
 # Models (section 10)
 DEFAULT_MODEL = "gpt-6.1-sol"
 DEFAULT_SAMPLES = 3
+DEFAULT_REASONING_EFFORT = "medium"   # SGC_REASONING_EFFORT overrides; "off" omits the parameter
+
+# USD per 1M tokens: (input, output). Used only for --max-spend and the cost estimate.
+MODEL_PRICES_PER_MILLION = {
+    "gpt-6-astra": (10.0, 50.0),
+    "gpt-6.1-sol": (2.0, 10.0),
+    "gpt-6-luna": (0.10, 0.50),
+}
+
+MAX_OUTPUT_TOKENS = {"screening": 8_000, "grading": 12_000, "weakest_area": 8_000}
+REQUEST_TIMEOUT_SECONDS = 300.0
+MAX_NETWORK_ATTEMPTS = 5            # per call; network errors, 429, 5xx
+NETWORK_BACKOFF_BASE_SECONDS = 2.0
+NETWORK_BACKOFF_MAX_SECONDS = 60.0
+MAX_VALIDATION_ATTEMPTS = 3         # one call plus up to two retries when the output is invalid
+MIN_VALID_SAMPLES = 2               # fewer valid grading samples than this means Not graded
+MAX_EVIDENCE_QUOTES = 3
+MAX_HIDDEN_TEXT_IN_PROMPT_CHARS = 3_000
+HIDDEN_EXCERPT_CHARS = 300
 
 # Output naming (section 12)
 REPORT_PREFIX = "sgc_report_"

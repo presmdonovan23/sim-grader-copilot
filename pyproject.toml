@@ -16,6 +16,7 @@ dependencies = [
     "lxml>=5",
     "pydantic>=2",
     "reportlab>=4",
+    "openai>=1.66",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +27,9 @@ sgc = "sgc.cli:app"
 
 [tool.setuptools.packages.find]
 include = ["sgc*"]
+
+[tool.setuptools.package-data]
+sgc = ["data/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
