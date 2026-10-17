@@ -34,7 +34,7 @@ NAME_PLACEHOLDER = "[NAME]"
 
 # Models (section 10)
 DEFAULT_MODEL = "gpt-6.1-sol"
-DEFAULT_SAMPLES = 3
+DEFAULT_SAMPLES = 1
 DEFAULT_REASONING_EFFORT = "medium"   # SGC_REASONING_EFFORT overrides; "off" omits the parameter
 
 # USD per 1M tokens: (input, output). Used only for --max-spend and the cost estimate.

@@ -72,6 +72,13 @@ def test_summary_page_and_sections(tmp_path):
     assert "750 words (within 500-1000)" in body
 
 
+def test_each_submission_starts_on_its_own_page_with_a_banner(tmp_path):
+    pages = render(tmp_path, [graded("b.pdf"), graded("a.docx"), not_graded("c.pdf", "unreadable")])
+    assert len(pages) == 4
+    for number, name in enumerate(["a.docx", "b.pdf", "c.pdf"], start=1):
+        assert pages[number].startswith(f"SUBMISSION {number} OF 3\n{name}")
+
+
 def test_summary_table_headers_do_not_wrap(tmp_path):
     summary = render(tmp_path, [graded("a.pdf")])[0]
     assert "Words Length Flags Borderline Status" in summary

@@ -13,7 +13,7 @@ Status: **Draft v3** (provider, output, configuration, request logging, and budg
 | Privacy | A single choke point: the model client accepts only a `RedactedText` object, which can be created only by the redaction step after it passes verification. |
 | Reliability | Fail closed. Any problem with extraction, redaction, model output validity, or evidence verification produces "Not graded" for that submission, never a guessed grade. |
 | Prompt injection | Layered defenses (section 9). The model has no tools and sees submission text only as delimited data. |
-| Consistency | Each submission is scored by 3 independent model samples. Per-category median is used. Disagreement marks a category Borderline. |
+| Consistency | Each submission is scored by `--samples` independent model samples (default 1). With 3 or more, the per-category median is used and disagreement marks a category Borderline. |
 | Report | Single PDF generated locally with `reportlab`. |
 | Configuration | The rubric file and names file are **required inputs supplied on every run**. Nothing in code or the repository is hardcoded to a particular rubric or names list. |
 | Audit trail | The **report PDF is written to the same directory as the submissions**. Logs and per-submission artifacts go in a subfolder of that directory. Original files are never modified. |
@@ -91,7 +91,7 @@ sim_grader_copilot/
 sgc grade SUBMISSIONS_DIR \
     --rubric PATH_TO_RUBRIC \
     --names PATH_TO_NAMES_FILE \
-    [--model MODEL_ID] [--samples 3] [--max-spend USD] [--dry-run]
+    [--model MODEL_ID] [--samples 1] [--max-spend USD] [--dry-run]
 ```
 
 Example: `sgc grade ~/Downloads/week3 --rubric rubric/simulation_reflection_rubric.md --names names.txt`
@@ -367,7 +367,7 @@ Quotes must be found in the redacted text (normalized whitespace and quote chara
 
 ### 10.4 Consistency and Borderline (F5a, N1, N2)
 
-Each submission is graded `--samples` times (default 3, must be odd). For each category:
+Each submission is graded `--samples` times (default 1, must be odd). For each category:
 
 - the final score is the **median** of the valid samples (the lower of the two middle values if an even number of samples is valid, which happens when a sample fails validation),
 - if the samples do not all agree, or if the median sample marked itself borderline, the category is marked **Borderline**, with the alternative level taken from the nearest differing sample (or the model's own `alternative_points`),
@@ -422,7 +422,7 @@ These are rough, order-of-magnitude estimates. The live evaluation records actua
 2. **In SGC:** every call's token usage is recorded in `manifest.json` and summarized in the console. A price table in `config.py` converts tokens to an estimated cost.
 3. **`--max-spend USD`:** before each model call, SGC checks the running estimated cost plus the estimated input cost of the call about to be made. If the ceiling would be exceeded, it stops making calls, marks the remaining submissions Not graded ("spend limit reached"), and still writes the report for those completed. Output tokens are only known after a call, so the ceiling can be exceeded by at most one call's output.
 4. **Bounded calls:** `max_output_tokens` is set on every call, and retries are capped (section 13).
-5. **Tuning knobs:** `--samples` (default 3, minimum 1) and reasoning effort can be lowered to cut cost, at some cost in consistency.
+5. **Tuning knobs:** `--samples` (default 1; raise it to 3 for more consistency at roughly triple the grading cost) and reasoning effort can be lowered to cut cost.
 6. **Dry run:** `--dry-run` shows submission and word counts and an estimated token total before any spend.
 
 **Data retention (what is and isn't possible)**

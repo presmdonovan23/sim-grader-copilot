@@ -22,7 +22,6 @@ from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
-    CondPageBreak,
     KeepTogether,
     PageBreak,
     Paragraph,
@@ -63,6 +62,7 @@ _RED_BG = colors.HexColor("#fdecea")
 _AMBER_BG = colors.HexColor("#fff4e0")
 _GREY = colors.HexColor("#555555")
 _HEAD_BG = colors.HexColor("#e8eaf0")
+_BANNER_BG = colors.HexColor("#1f2d4d")
 
 
 @dataclass
@@ -112,6 +112,12 @@ def _styles() -> Dict[str, ParagraphStyle]:
         "cellc": ParagraphStyle("cellc", parent=body, fontSize=8, leading=10, alignment=TA_CENTER),
         "head": ParagraphStyle("head", parent=body, fontName=_FONT_BOLD, fontSize=7.5, leading=9, alignment=TA_CENTER),
         "alert": ParagraphStyle("alert", parent=body, fontSize=9, leading=12),
+        "banner": ParagraphStyle(
+            "banner", parent=body, fontName=_FONT_BOLD, fontSize=17, leading=21, textColor=colors.white
+        ),
+        "banner_sub": ParagraphStyle(
+            "banner_sub", parent=body, fontSize=8.5, leading=11, textColor=colors.HexColor("#c9d1e6")
+        ),
     }
 
 
@@ -280,9 +286,33 @@ def _flag_list(flags: List[FlagRecord], st: Dict[str, ParagraphStyle]) -> list:
     return out
 
 
-def _submission_section(item: Prepared, info: ReportInfo, st: Dict[str, ParagraphStyle]) -> list:
+def _banner(item: Prepared, number: int, count: int, st: Dict[str, ParagraphStyle]) -> Table:
+    banner = Table(
+        [
+            [Paragraph(f"SUBMISSION {number} OF {count}", st["banner_sub"])],
+            [Paragraph(_esc(item.filename), st["banner"])],
+        ],
+        colWidths=[7.0 * inch],
+    )
+    banner.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), _BANNER_BG),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                ("TOPPADDING", (0, 0), (-1, 0), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 0),
+                ("TOPPADDING", (0, 1), (-1, 1), 1),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
+            ]
+        )
+    )
+    return banner
+
+
+def _submission_section(item: Prepared, number: int, count: int, st: Dict[str, ParagraphStyle]) -> list:
     label = status_label(item)
-    story: list = [CondPageBreak(3.5 * inch), Paragraph(_esc(item.filename), st["h1"])]
+    story: list = [PageBreak(), _banner(item, number, count, st), Spacer(1, 6)]
     story.append(Paragraph(f"<b>Status:</b> {_esc(label)}", st["body"]))
     injection = [f for f in item.flags if _is_injection(f)]
     others = [f for f in item.flags if not _is_injection(f)]
@@ -359,9 +389,8 @@ def build_report(path: Path, items: List[Prepared], info: ReportInfo) -> None:
     st = _styles()
     ordered = sorted(items, key=lambda i: (i.filename.casefold(), i.filename))
     story = _summary_page(ordered, info, st)
-    story.append(PageBreak())
-    for item in ordered:
-        story.extend(_submission_section(item, info, st))
+    for number, item in enumerate(ordered, start=1):
+        story.extend(_submission_section(item, number, len(ordered), st))
     doc = SimpleDocTemplate(
         str(path),
         pagesize=letter,

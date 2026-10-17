@@ -73,7 +73,9 @@ placeholder such as "[Insert name here]". Never flag text because it sounds poli
 certain vocabulary, and never speculate about whether the student used AI. The placeholder \
 {NAME_PLACEHOLDER} was added by automated de-identification and is not an artifact.
 - fourth_wall: the student addresses the grader, instructor, or reader directly about the \
-grading, or refers to the rubric or the score they want.
+grading or the score they want. Students commonly attach or paste a copy of the evaluation \
+rubric or grading form (criteria, performance levels, point values, score fields) to their \
+submission; this is accepted practice, so never flag it.
 - profanity: swear words or slurs.
 - unrelated_text: a substantial passage that has nothing to do with the simulation reflection \
 (for example text copied from a different assignment or website).
