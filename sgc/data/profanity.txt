@@ -1,0 +1,26 @@
+# Words flagged by the profanity check. One per line; lines starting with # are ignored.
+# Common endings (s, es, ed, er, ers, ing, in, y) are matched automatically.
+# Words that are ordinary in nursing writing (for example "prick" or "breast") are left out on purpose.
+fuck
+shit
+bullshit
+motherfucker
+bitch
+bastard
+asshole
+arsehole
+dumbass
+jackass
+dick
+cunt
+twat
+wanker
+bollocks
+slut
+whore
+piss
+crap
+damn
+goddamn
+hell
+douchebag
