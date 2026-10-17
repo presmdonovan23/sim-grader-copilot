@@ -60,7 +60,19 @@ Expected cost is roughly $3 per week at 20 submissions with the default model (a
 
 ## Status
 
-Early planning. Current documents:
+In development. Working now: rubric parsing, file discovery, PDF and DOCX extraction with a quality gate, word count, name redaction, and `--dry-run`. Not yet built: the model calls, scoring, and the PDF report. Without `--dry-run`, `sgc grade` currently exits with an error.
+
+To try the working part (Python 3.9 or newer):
+
+```
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+.venv/bin/sgc grade ./submissions --rubric rubric/simulation_reflection_rubric.md --names names.txt --dry-run
+.venv/bin/pytest
+```
+
+A dry run writes `sgc_run_<timestamp>/` next to the submissions, with the redacted text of each file (`S001/redacted.txt`). Read a few before trusting the redaction, and make sure your real names list is in place first.
+
+Current documents:
 
 | Document | Purpose |
 | --- | --- |
@@ -68,13 +80,15 @@ Early planning. Current documents:
 | [plans/product_spec.md](plans/product_spec.md) | Product requirements |
 | [plans/technical_spec.md](plans/technical_spec.md) | Technical design |
 
-Still to come: example assignments and evaluation set.
+Still to come: evaluation set.
 
 ## Repository layout
 
 ```
-plans/       Specs and planning documents
-rubric/      Grading rubric (simulation_reflection_rubric.md)
-names.txt    Names to remove from submissions (one per line)
-examples/    Sample assignments        (not yet added)
+sgc/                    The tool
+tests/                  Unit tests (no network needed)
+plans/                  Specs and planning documents
+rubric/                 Grading rubric (simulation_reflection_rubric.md)
+names.txt               Names to remove from submissions (one per line)
+example_assignments/    Real student work (git-ignored, never commit)
 ```

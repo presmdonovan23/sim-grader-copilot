@@ -6,6 +6,7 @@ detected). Cross-check extractor: pypdf. Images are counted and never sent to a 
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any, List
 
@@ -15,6 +16,10 @@ import pypdf
 from ..config import HIDDEN_FONT_SIZE_PT, NEAR_WHITE_THRESHOLD
 from ..errors import NotGraded
 from .types import ExtractedDocument, TextSpan
+
+# Library chatter about slightly malformed PDFs is not useful to the instructor.
+logging.getLogger("pypdf").setLevel(logging.ERROR)
+logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 
 def _numbers(color: Any) -> List[float]:
