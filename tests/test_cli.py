@@ -126,11 +126,79 @@ def test_fatal_errors_exit_2(tmp_path):
     assert not [p for p in subs.iterdir() if p.name.startswith("sgc_run_")]   # nothing was created
 
 
-def test_real_run_not_available_yet(tmp_path):
+def test_real_run_requires_api_key(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     subs = make_submissions(tmp_path)
     result = run_cli(subs, names_file(tmp_path))
     assert result.exit_code == 2
-    assert "not implemented" in result.output
+    assert "OPENAI_API_KEY is not set" in result.output
+    assert not [p for p in subs.iterdir() if p.name.startswith("sgc_run_")]
+
+
+def test_max_spend_needs_a_known_price(tmp_path):
+    subs = make_submissions(tmp_path)
+    result = run_cli(subs, names_file(tmp_path), "--dry-run", "--model", "mystery", "--max-spend", "5")
+    assert result.exit_code == 2 and "known price" in result.output
+
+
+def test_dry_run_logs_the_first_request_unsent_and_redacted(tmp_path):
+    subs = make_submissions(tmp_path)
+    run_cli(subs, names_file(tmp_path), "--dry-run")
+    run = run_folder(subs)
+    log = (run / "S001" / "llm_calls.jsonl").read_text()
+    (event,) = [json.loads(line) for line in log.splitlines()]
+    assert event["sent"] is False and event["stage"] == "screening"
+    assert event["request"]["store"] is False
+    assert "[NAME]" in event["request"]["input"] and "Susan" not in log and "Lee" not in log
+    assert not (run / "S002" / "llm_calls.jsonl").exists()
+
+
+def test_graded_run_with_a_fake_model(tmp_path, monkeypatch):
+    from fakes import ScriptedLLM, grading, screening
+    from sgc.rubric import load_rubric
+
+    rubric = load_rubric(RUBRIC)
+    quote = "it is important to stay calm and to communicate with the team"
+    llm = ScriptedLLM({
+        "screening": [screening(), screening()],
+        "grading": [grading(rubric, [4, 3, 2, 1], quote)] * 2,
+    })
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("sgc.cli.OpenAIClient", lambda **kwargs: llm)
+    subs = make_submissions(tmp_path)
+    result = run_cli(subs, names_file(tmp_path), "--samples", "1")
+    assert result.exit_code == 1, result.output                      # notes.txt is Not graded
+    assert "alice.pdf  graded 10/16" in result.output
+    assert "bob.docx  graded 10/16" in result.output
+    assert "2 graded, 1 not graded" in result.output
+    run = run_folder(subs)
+    data = json.loads((run / "S001" / "result.json").read_text())
+    assert data["status"] == "graded" and data["grading"]["total"] == 10
+    assert data["grading"]["categories"][0]["evidence_quotes"] == [quote]
+    assert "Susan" not in (run / "S001" / "result.json").read_text()
+    assert "Susan" not in "".join(c["prompt"] for c in llm.calls)
+    manifest = json.loads((run / "manifest.json").read_text())
+    assert manifest["usage"]["model"] == "gpt-6.1-sol"
+    assert manifest["counts"] == {"submissions": 3, "not_graded": 1}
+
+
+def test_model_failure_marks_only_that_submission_not_graded(tmp_path, monkeypatch):
+    from fakes import ScriptedLLM, grading, screening
+    from sgc.llm.errors import ModelUnavailable
+    from sgc.rubric import load_rubric
+
+    rubric = load_rubric(RUBRIC)
+    quote = "it is important to stay calm and to communicate with the team"
+    llm = ScriptedLLM({
+        "screening": [ModelUnavailable("down"), screening()],
+        "grading": [grading(rubric, [4, 4, 3, 3], quote)],
+    })
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("sgc.cli.OpenAIClient", lambda **kwargs: llm)
+    subs = make_submissions(tmp_path)
+    result = run_cli(subs, names_file(tmp_path), "--samples", "1")
+    assert "alice.pdf  NOT GRADED: the model could not be reached" in result.output
+    assert "bob.docx  graded 14/16" in result.output
 
 
 def test_repeated_runs_do_not_overwrite(tmp_path):
