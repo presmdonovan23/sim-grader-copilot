@@ -72,6 +72,11 @@ def test_summary_page_and_sections(tmp_path):
     assert "750 words (within 500-1000)" in body
 
 
+def test_summary_table_headers_do_not_wrap(tmp_path):
+    summary = render(tmp_path, [graded("a.pdf")])[0]
+    assert "Words Length Flags Borderline Status" in summary
+
+
 def test_not_graded_entry_shows_reason_and_no_score(tmp_path):
     pages = render(tmp_path, [not_graded("a.docx", "scanned images only")])
     body = "\n".join(pages[1:])

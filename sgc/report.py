@@ -172,7 +172,7 @@ def _summary_page(items: List[Prepared], info: ReportInfo, st: Dict[str, Paragra
     story.append(meta_table)
     story.append(Spacer(1, 10))
 
-    header = ["File", "Total"] + [f"C{n}" for n in range(1, len(categories) + 1)] + ["Words", "Length", "Flags", "Border-line", "Status"]
+    header = ["File", "Total"] + [f"C{n}" for n in range(1, len(categories) + 1)] + ["Words", "Length", "Flags", "Borderline", "Status"]
     rows = [[Paragraph(_esc(h), st["head"]) for h in header]]
     for item in items:
         scored = status_label(item) != STATUS_LABEL_NOT_GRADED and item.grade is not None
@@ -193,7 +193,7 @@ def _summary_page(items: List[Prepared], info: ReportInfo, st: Dict[str, Paragra
         rows.append(row)
 
     total_width = 7.0 * inch
-    fixed = [0.55, *([0.38] * len(categories)), 0.5, 0.55, 0.45, 0.55, 0.85]
+    fixed = [0.55, *([0.38] * len(categories)), 0.6, 0.6, 0.55, 0.8, 0.85]
     file_width = max(1.2, 7.0 - sum(fixed))
     widths = [w * inch for w in [file_width, *fixed]]
     scale = total_width / sum(widths)
