@@ -4,6 +4,7 @@ sgc_run_*
 
 # Student work (never commit)
 example_assignments/
+assignments_*/
 
 # Secrets
 .env
