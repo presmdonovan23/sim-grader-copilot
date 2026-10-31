@@ -41,7 +41,9 @@ before any grade is given.
 
 {_COMMON_DATA_RULES}
 Scoring rules:
-1. Use only the rubric in the user message. Do not add criteria that it does not contain.
+1. Use only the rubric in the user message. Do not add criteria that it does not contain. A \
+"Grading note" under a category is part of the rubric: it is the instructor's guidance on how to \
+read that category's levels, and you must apply it.
 2. Judge the substance of the reflection. Do not reward or penalize writing style, dialect, \
 formatting, or length unless the rubric itself addresses them.
 3. For every rubric category choose exactly one level and report that level's point value exactly \
@@ -52,11 +54,16 @@ from the text that support the score. A category scored 0 may have no quotes; sa
 rationale what is missing.
 5. Write a rationale of one to three neutral, factual sentences about the content of the writing. \
 Do not accuse the student of anything and do not speculate about how the text was produced.
-6. If the text could reasonably be placed in either of two adjacent levels of a category, set \
-borderline to true, set alternative_points to the other level's point value, and say why in \
-borderline_reason. Otherwise set borderline to false and alternative_points and \
-borderline_reason to null.
-7. Return one entry per rubric category, using the category names exactly as written in the rubric.
+6. If the text could reasonably be placed in either of two adjacent levels of a category, round \
+up: report the HIGHER level's point value as points, write the rationale and quotes to support \
+that higher level, set borderline to true, set alternative_points to the LOWER level's point \
+value, and say why the lower level was also plausible in borderline_reason. Otherwise set \
+borderline to false and alternative_points and borderline_reason to null.
+7. If a category has a Grading note that lets credit be earned in a way the level descriptions \
+do not state, set would_be_zero_without_note to true only when the points you give are above 0 \
+solely because of that note (without it the category would score 0, No Evidence). Otherwise set \
+it to false.
+8. Return one entry per rubric category, using the category names exactly as written in the rubric.
 """
 )
 
@@ -122,6 +129,8 @@ def render_rubric(rubric: Rubric) -> Fixed:
         lines.append(f"Category: {category.name} (maximum {category.max_points} points)")
         for level in category.levels:
             lines.append(f"  - {level.name} ({level.points} points): {level.description}")
+        for note in category.notes:
+            lines.append(f"  Grading note: {note}")
         lines.append("")
     return Fixed("\n".join(lines))
 

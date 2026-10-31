@@ -30,6 +30,7 @@ Total Points: 8
 
 def test_real_rubric_parses():
     rubric = load_rubric(REPO / "rubric" / "simulation_reflection_rubric.md")
+    assert rubric.categories[3].notes and not rubric.categories[0].notes
     assert rubric.total_points == 16
     assert [c.name for c in rubric.categories] == [
         "Depth of Insight",

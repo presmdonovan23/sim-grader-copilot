@@ -9,6 +9,8 @@ Expected format:
 
     - **Level Name (4):** description
     - **Another Level (3):** description
+
+    Grading note: optional instructor guidance for the category above it (one line each).
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ class Category(BaseModel):
     name: str
     max_points: int
     levels: List[Level]
+    notes: List[str] = []
 
 
 class Rubric(BaseModel):
@@ -51,6 +54,7 @@ _TITLE_RE = re.compile(r"^#\s+(.+?)\s*$")
 _TOTAL_RE = re.compile(r"^\s*Total Points:\s*(\d+)\s*$", re.IGNORECASE)
 _CATEGORY_RE = re.compile(r"^##\s+(.+?)\s*\(\s*(\d+)\s+points?\s*\)\s*$", re.IGNORECASE)
 _LEVEL_RE = re.compile(r"^\s*[-*]\s+\*\*(.+?)\s*\(\s*(\d+)\s*\):?\s*\*\*:?\s*(.*?)\s*$")
+_NOTE_RE = re.compile(r"^\s*Grading note:\s*(.+?)\s*$", re.IGNORECASE)
 _LEVEL_LIKE_RE = re.compile(r"^\s*[-*]\s+\*\*")
 
 
@@ -80,7 +84,7 @@ def parse_rubric(text: str, *, source_path: str = "<memory>", sha256: str = "") 
                     f"Rubric line {lineno}: category heading must look like "
                     f"'## Name (N points)': {line.strip()!r}"
                 )
-            current = Category(name=m.group(1), max_points=int(m.group(2)), levels=[])
+            current = Category(name=m.group(1), max_points=int(m.group(2)), levels=[], notes=[])
             categories.append(current)
             continue
         if line.startswith("# ") and not title:
@@ -89,6 +93,12 @@ def parse_rubric(text: str, *, source_path: str = "<memory>", sha256: str = "") 
         m = _TOTAL_RE.match(line)
         if m:
             total_points = int(m.group(1))
+            continue
+        m = _NOTE_RE.match(line)
+        if m:
+            if current is None:
+                raise RubricError(f"Rubric line {lineno}: grading note appears before any category")
+            current.notes.append(m.group(1))
             continue
         if _LEVEL_LIKE_RE.match(line):
             m = _LEVEL_RE.match(line)

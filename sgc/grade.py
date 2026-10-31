@@ -28,6 +28,7 @@ class CategoryResult:
     borderline: bool = False
     alternative_points: Optional[int] = None
     borderline_reason: Optional[str] = None
+    zero_without_note: bool = False
 
     def to_json(self) -> dict:
         return {
@@ -39,6 +40,7 @@ class CategoryResult:
             "borderline": self.borderline,
             "alternative_points": self.alternative_points,
             "borderline_reason": self.borderline_reason,
+            "zero_without_grading_note": self.zero_without_note,
         }
 
 
@@ -74,6 +76,10 @@ class GradeOutcome:
     @property
     def borderline_categories(self) -> List[str]:
         return [c.category for c in self.categories if c.borderline]
+
+    @property
+    def note_credit_categories(self) -> List[str]:
+        return [c.category for c in self.categories if c.zero_without_note]
 
     def to_json(self) -> dict:
         return {
@@ -127,21 +133,25 @@ def validate_sample(parsed: GradingResult, rubric: Rubric, text: str) -> List[Ca
             raise ValidationFailure(f"'{category.name}': no evidence quote could be found in the text")
         alternative = None
         reason = None
+        points = score.points
         if score.borderline:
             alternative = score.alternative_points
             if alternative is None or alternative not in valid_points or not _adjacent(score.points, alternative, category):
                 raise ValidationFailure(f"'{category.name}': borderline without a valid adjacent alternative")
+            if alternative > points:  # borderline cases round up to the higher level
+                points, alternative = alternative, points
             reason = (score.borderline_reason or "").strip() or None
         results.append(
             CategoryResult(
                 category=category.name,
                 max_points=category.max_points,
-                points=score.points,
+                points=points,
                 rationale=score.rationale.strip(),
                 quotes=quotes[:MAX_EVIDENCE_QUOTES],
                 borderline=bool(score.borderline),
                 alternative_points=alternative,
                 borderline_reason=reason,
+                zero_without_note=bool(score.would_be_zero_without_note and category.notes and points > 0),
             )
         )
     return results
@@ -154,7 +164,8 @@ def combine_samples(rubric: Rubric, samples: List[List[CategoryResult]]) -> List
     """Per-category median (the lower median for an even count) with Borderline marking.
 
     A category is Borderline when samples disagree, or when a sample at the median score marked
-    itself borderline. The rationale and quotes come from a sample at the median score.
+    itself borderline. Borderline rounds up: when the nearest differing score is the adjacent
+    higher level, that level is used. The rationale and quotes come from a sample at the final score.
     """
     count = len(samples)
     combined: List[CategoryResult] = []
@@ -164,6 +175,7 @@ def combine_samples(rubric: Rubric, samples: List[List[CategoryResult]]) -> List
         median = scores[(count - 1) // 2]
         at_median = [e for e in entries if e.points == median]
         chosen = at_median[0]
+        points = median
         others = sorted({p for p in scores if p != median})
         borderline = False
         alternative: Optional[int] = None
@@ -175,6 +187,9 @@ def combine_samples(rubric: Rubric, samples: List[List[CategoryResult]]) -> List
             hinted = next((e for e in at_median if e.borderline and e.alternative_points == alternative), None)
             if hinted and hinted.borderline_reason:
                 reason += " " + hinted.borderline_reason
+            if alternative > median and _adjacent(median, alternative, category):
+                points, alternative = alternative, median
+                chosen = next(e for e in entries if e.points == points)
         else:
             hinted = next((e for e in at_median if e.borderline), None)
             if hinted:
@@ -185,12 +200,13 @@ def combine_samples(rubric: Rubric, samples: List[List[CategoryResult]]) -> List
             CategoryResult(
                 category=category.name,
                 max_points=category.max_points,
-                points=median,
+                points=points,
                 rationale=chosen.rationale,
                 quotes=list(chosen.quotes),
                 borderline=borderline,
                 alternative_points=alternative,
                 borderline_reason=reason,
+                zero_without_note=chosen.zero_without_note,
             )
         )
     return combined

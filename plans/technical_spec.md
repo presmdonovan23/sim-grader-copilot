@@ -371,7 +371,10 @@ Each submission is graded `--samples` times (default 1, must be odd). For each c
 
 - the final score is the **median** of the valid samples (the lower of the two middle values if an even number of samples is valid, which happens when a sample fails validation),
 - if the samples do not all agree, or if the median sample marked itself borderline, the category is marked **Borderline**, with the alternative level taken from the nearest differing sample (or the model's own `alternative_points`),
-- rationale and quotes come from a sample that matches the median score.
+- **Borderline rounds up:** when the alternative is the adjacent higher level, that higher level becomes the score (a single sample that reports a borderline category is also normalized so `points` is the higher level and `alternative_points` the lower),
+- rationale and quotes come from a sample that matches the final score.
+
+A rubric category may carry one or more `Grading note:` lines (instructor guidance, rendered into the prompt under that category). When the model gives points above 0 solely because of such a note, it sets `would_be_zero_without_note`; the report then shows a "Credit" flag for the instructor.
 
 Any Borderline category adds a note to the entry and highlights it in the report summary. The total is the sum of the final category scores.
 

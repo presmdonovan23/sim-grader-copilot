@@ -178,7 +178,7 @@ def _summary_page(items: List[Prepared], info: ReportInfo, st: Dict[str, Paragra
     story.append(meta_table)
     story.append(Spacer(1, 10))
 
-    header = ["File", "Total"] + [f"C{n}" for n in range(1, len(categories) + 1)] + ["Words", "Length", "Flags", "Borderline", "Status"]
+    header = ["File", "Total"] + [f"C{n}" for n in range(1, len(categories) + 1)] + ["Words", "Length", "Flags", "Borderline", "Credit", "Status"]
     rows = [[Paragraph(_esc(h), st["head"]) for h in header]]
     for item in items:
         scored = status_label(item) != STATUS_LABEL_NOT_GRADED and item.grade is not None
@@ -195,12 +195,13 @@ def _summary_page(items: List[Prepared], info: ReportInfo, st: Dict[str, Paragra
         row.append(Paragraph(length, st["cellc"]))
         row.append(Paragraph("Yes" if item.flags else "-", st["cellc"]))
         row.append(Paragraph("Yes" if scored and item.grade.borderline_categories else "-", st["cellc"]))
+        row.append(Paragraph("Yes" if scored and item.grade.note_credit_categories else "-", st["cellc"]))
         row.append(Paragraph(_esc(status_label(item)), st["cell"]))
         rows.append(row)
 
     total_width = 7.0 * inch
-    fixed = [0.55, *([0.38] * len(categories)), 0.6, 0.6, 0.55, 0.8, 0.85]
-    file_width = max(1.2, 7.0 - sum(fixed))
+    fixed = [0.55, *([0.32] * len(categories)), 0.55, 0.58, 0.5, 0.8, 0.55, 0.8]
+    file_width = max(1.0, 7.0 - sum(fixed))
     widths = [w * inch for w in [file_width, *fixed]]
     scale = total_width / sum(widths)
     table = Table(rows, colWidths=[w * scale for w in widths], repeatRows=1)
@@ -228,6 +229,7 @@ def _summary_page(items: List[Prepared], info: ReportInfo, st: Dict[str, Paragra
         Paragraph(
             "Length: Under = fewer than "
             f"{config.WORD_COUNT_MIN} words, Over = more than {config.WORD_COUNT_MAX}. "
+            "Borderline = rounded up from a close call. Credit = a category scored above 0 only because of a rubric grading note. "
             "Rows shaded red contain a possible prompt injection; amber rows have other flags; grey rows were not graded.",
             st["muted"],
         )
@@ -342,7 +344,15 @@ def _submission_section(item: Prepared, number: int, count: int, st: Dict[str, P
             alt = f"{result.alternative_points}/{result.max_points}" if result.alternative_points is not None else "n/a"
             reason = f" {_esc(result.borderline_reason)}" if result.borderline_reason else ""
             block.append(
-                Paragraph(f"<b>Borderline.</b> Could also be {_esc(alt)}.{reason}", st["body"])
+                Paragraph(f"<b>Borderline.</b> Rounded up to the higher level; could also be {_esc(alt)}.{reason}", st["body"])
+            )
+        if result.zero_without_note:
+            block.append(
+                Paragraph(
+                    "<b>Flag: credit from grading note.</b> This category would likely have scored 0 "
+                    "without the grading note for it in the rubric; review before accepting.",
+                    st["body"],
+                )
             )
         story.append(KeepTogether(block[:3]))
         story.extend(block[3:])

@@ -95,6 +95,8 @@ def _describe(item: Prepared) -> str:
     if item.status == STATUS_GRADED and item.grade is not None:
         border = item.grade.borderline_categories
         border_text = f"  borderline: {', '.join(border)}" if border else ""
+        note = item.grade.note_credit_categories
+        border_text += f"  note credit: {', '.join(note)}" if note else ""
         flag_text = f"  flags: {len(item.flags)}" if item.flags else ""
         return (
             f"{item.sid}  {item.filename}  graded {item.grade.total}/{item.grade.max_total}  "

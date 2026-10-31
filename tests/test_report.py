@@ -12,7 +12,7 @@ from sgc.pipeline import STATUS_GRADED, STATUS_NOT_GRADED, Prepared
 from sgc.report import ReportInfo, build_report, status_label
 from sgc.rubric import load_rubric
 
-RUBRIC_PATH = Path(__file__).resolve().parent.parent / "rubric" / "simulation_reflection_rubric.md"
+RUBRIC_PATH = Path(__file__).resolve().parent / "fixtures" / "rubric_four_categories.md"
 RUBRIC = load_rubric(RUBRIC_PATH)
 
 
@@ -81,7 +81,7 @@ def test_each_submission_starts_on_its_own_page_with_a_banner(tmp_path):
 
 def test_summary_table_headers_do_not_wrap(tmp_path):
     summary = render(tmp_path, [graded("a.pdf")])[0]
-    assert "Words Length Flags Borderline Status" in summary
+    assert "Words Length Flags Borderline Credit Status" in summary
 
 
 def test_not_graded_entry_shows_reason_and_no_score(tmp_path):
@@ -146,8 +146,16 @@ def test_borderline_is_described(tmp_path):
     first = item.grade.categories[0]
     first.borderline, first.alternative_points, first.borderline_reason = True, 3, "Close call."
     pages = render(tmp_path, [item])
-    assert "Borderline. Could also be 3/4. Close call." in "\n".join(pages[1:])
+    assert "Borderline. Rounded up to the higher level; could also be 3/4. Close call." in "\n".join(pages[1:])
     assert "Yes" in pages[0]
+
+
+def test_note_credit_is_flagged(tmp_path):
+    item = graded("a.pdf")
+    item.grade.categories[3].zero_without_note = True
+    pages = render(tmp_path, [item])
+    assert "credit from grading note" in "\n".join(pages[1:])
+    assert "Credit" in pages[0] and "Yes" in pages[0]
 
 
 def test_length_flag_and_notes(tmp_path):

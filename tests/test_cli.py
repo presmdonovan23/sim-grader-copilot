@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 from sgc.cli import app
 
 REPO = Path(__file__).resolve().parent.parent
-RUBRIC = REPO / "rubric" / "simulation_reflection_rubric.md"
+RUBRIC = REPO / "tests" / "fixtures" / "rubric_four_categories.md"
 
 runner = CliRunner()
 

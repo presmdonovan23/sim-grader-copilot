@@ -36,6 +36,7 @@ class CategoryScore(BaseModel):
     borderline: bool
     alternative_points: Optional[int]
     borderline_reason: Optional[str]
+    would_be_zero_without_note: bool = False
 
 
 class GradingResult(BaseModel):

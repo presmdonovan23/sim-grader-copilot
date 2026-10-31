@@ -52,7 +52,7 @@ class ScriptedLLM:
 
 
 def score(category: str, points: int, quotes: Optional[List[str]] = None, *, borderline=False,
-          alternative=None, reason=None, rationale="Because.") -> CategoryScore:
+          alternative=None, reason=None, rationale="Because.", would_be_zero_without_note=False) -> CategoryScore:
     return CategoryScore(
         category=category,
         points=points,
@@ -61,6 +61,7 @@ def score(category: str, points: int, quotes: Optional[List[str]] = None, *, bor
         borderline=borderline,
         alternative_points=alternative,
         borderline_reason=reason,
+        would_be_zero_without_note=would_be_zero_without_note,
     )
 
 

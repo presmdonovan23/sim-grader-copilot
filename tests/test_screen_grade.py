@@ -14,7 +14,7 @@ from sgc.rubric import load_rubric
 from sgc.screen import merge_flags, model_screen, neutralize, screen_submission
 
 REPO = Path(__file__).resolve().parent.parent
-RUBRIC = load_rubric(REPO / "rubric" / "simulation_reflection_rubric.md")
+RUBRIC = load_rubric(REPO / "tests" / "fixtures" / "rubric_four_categories.md")
 NAMES = [c.name for c in RUBRIC.categories]
 
 TEXT = (
@@ -157,9 +157,9 @@ def samples_of(*point_lists, **kw):
 
 def test_median_and_borderline_from_disagreement():
     combined = combine_samples(RUBRIC, samples_of([4, 3, 2, 1], [4, 3, 3, 1], [4, 4, 3, 1]))
-    assert [c.points for c in combined] == [4, 3, 3, 1]
+    assert [c.points for c in combined] == [4, 4, 3, 1]  # disagreement rounds up to the adjacent higher level
     assert [c.borderline for c in combined] == [False, True, True, False]
-    assert combined[1].alternative_points == 4
+    assert combined[1].alternative_points == 3
     assert combined[2].alternative_points == 2
     assert "differed" in combined[1].borderline_reason
 
@@ -175,8 +175,27 @@ def test_self_reported_borderline_with_agreeing_samples():
     assert not any(c.borderline for c in combined)
     sample = validate_sample(good([4, 3, 2, 1], **extra), RUBRIC, TEXT)
     combined = combine_samples(RUBRIC, [sample] + samples_of([4, 3, 2, 1], [4, 3, 2, 1]))
-    assert combined[0].borderline and combined[0].alternative_points == 3
+    assert combined[0].points == 4 and combined[0].borderline and combined[0].alternative_points == 3
     assert combined[0].borderline_reason == "Close to a 3."
+
+
+def test_borderline_rounds_up_in_a_single_sample():
+    low = {"Self-Awareness": {"borderline": True, "alternative": 4, "reason": "Could be a 4."}}
+    high = {"Self-Awareness": {"borderline": True, "alternative": 2, "reason": "Could be a 2."}}
+    for extra in (low, high):
+        result = validate_sample(good([4, 3, 2, 1], **extra), RUBRIC, TEXT)
+        assert result[1].points == (4 if extra is low else 3) and result[1].borderline
+    assert validate_sample(good([4, 3, 2, 1], **low), RUBRIC, TEXT)[1].alternative_points == 3
+
+
+def test_grading_note_flag_is_kept_only_for_credited_categories_with_a_note():
+    takeaways = RUBRIC.categories[3].name
+    credited = validate_sample(good([4, 3, 2, 1], **{takeaways: {"would_be_zero_without_note": True}}), RUBRIC, TEXT)
+    assert [r.zero_without_note for r in credited] == [False, False, False, True]
+    no_note = validate_sample(good([4, 3, 2, 1], **{"Depth of Insight": {"would_be_zero_without_note": True}}), RUBRIC, TEXT)
+    assert not any(r.zero_without_note for r in no_note)
+    zero = validate_sample(good([4, 3, 2, 0], **{takeaways: {"would_be_zero_without_note": True}}), RUBRIC, TEXT)
+    assert not any(r.zero_without_note for r in zero)
 
 
 def test_rationale_comes_from_a_sample_at_the_median():
@@ -196,7 +215,7 @@ def test_rationale_comes_from_a_sample_at_the_median():
 def test_three_valid_samples():
     llm = ScriptedLLM({"grading": [good([4, 3, 2, 1]), good([4, 3, 2, 1]), good([4, 3, 3, 1])]})
     outcome = grade_text(llm, RUBRIC, red(TEXT), "S001", 3)
-    assert outcome.total == 10 and outcome.max_total == 16
+    assert outcome.total == 11 and outcome.max_total == 16
     assert outcome.samples_valid == 3 and not llm.stage_calls("weakest_area")
     assert outcome.borderline_categories == ["Clinical Judgment & Decision-Making"]
 
